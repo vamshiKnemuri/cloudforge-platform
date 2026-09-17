@@ -10,6 +10,7 @@ permissions:
 
 jobs:
   bootstrap:
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -444,7 +445,7 @@ jobs:
           yfP/ASaIXjoA4AEA
           CLOUDFORGE_ARCHIVE
           tar -xzf /tmp/cloudforge-project.tar.gz
-          rm -f .github/workflows/bootstrap-project.yml
+          find .github/workflows -type f ! -name 'bootstrap-project.yml' -delete
       - name: Commit project
         shell: bash
         run: |
