@@ -1,6 +1,8 @@
 name: Bootstrap CloudForge Project
 
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -451,4 +453,3 @@ jobs:
           git add --all
           git commit -m "Build production-style AWS EKS DevOps platform"
           git push origin HEAD:main
-
