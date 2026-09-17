@@ -1,0 +1,16 @@
+services:
+  cloudforge:
+    build: .
+    environment:
+      APP_ENV: local-compose
+      APP_VERSION: compose
+    ports:
+      - "8080:8080"
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+

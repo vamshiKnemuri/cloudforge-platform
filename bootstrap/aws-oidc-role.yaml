@@ -1,0 +1,143 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Temporary GitHub Actions OIDC role and encrypted Terraform state for CloudForge
+
+Parameters:
+  GitHubOwner:
+    Type: String
+    Description: GitHub username or organization that owns the repository
+    AllowedPattern: "^[A-Za-z0-9_.-]+$"
+  GitHubRepository:
+    Type: String
+    Default: cloudforge-platform
+    Description: Repository name without the owner
+    AllowedPattern: "^[A-Za-z0-9_.-]+$"
+  GitHubEnvironment:
+    Type: String
+    Default: demo
+    Description: Protected GitHub environment used by deploy and destroy workflows
+  DeployRoleName:
+    Type: String
+    Default: CloudForgeGitHubDeployRole
+
+Resources:
+  GitHubOIDCProvider:
+    Type: AWS::IAM::OIDCProvider
+    Properties:
+      Url: https://token.actions.githubusercontent.com
+      ClientIdList:
+        - sts.amazonaws.com
+      ThumbprintList:
+        - 6938fd4d98bab03faadb97b34396831e3780aea1
+      Tags:
+        - Key: Project
+          Value: CloudForge
+        - Key: AutoDestroy
+          Value: "true"
+
+  TerraformStateBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub cloudforge-tfstate-${AWS::AccountId}-${AWS::Region}
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      VersioningConfiguration:
+        Status: Enabled
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerEnforced
+      Tags:
+        - Key: Project
+          Value: CloudForge
+        - Key: AutoDestroy
+          Value: "true"
+
+  TerraformStateBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref TerraformStateBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: DenyInsecureTransport
+            Effect: Deny
+            Principal: "*"
+            Action: s3:*
+            Resource:
+              - !GetAtt TerraformStateBucket.Arn
+              - !Sub ${TerraformStateBucket.Arn}/*
+            Condition:
+              Bool:
+                aws:SecureTransport: "false"
+
+  GitHubDeployRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Ref DeployRoleName
+      MaxSessionDuration: 3600
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: !Ref GitHubOIDCProvider
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                token.actions.githubusercontent.com:aud: sts.amazonaws.com
+                token.actions.githubusercontent.com:sub: !Sub repo:${GitHubOwner}/${GitHubRepository}:environment:${GitHubEnvironment}
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/PowerUserAccess
+      Policies:
+        - PolicyName: CloudForgeScopedIAM
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: ManageProjectRoles
+                Effect: Allow
+                Action:
+                  - iam:CreateRole
+                  - iam:DeleteRole
+                  - iam:GetRole
+                  - iam:TagRole
+                  - iam:UntagRole
+                  - iam:UpdateAssumeRolePolicy
+                  - iam:PutRolePolicy
+                  - iam:DeleteRolePolicy
+                  - iam:GetRolePolicy
+                  - iam:AttachRolePolicy
+                  - iam:DetachRolePolicy
+                  - iam:ListAttachedRolePolicies
+                  - iam:ListRolePolicies
+                  - iam:PassRole
+                Resource: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/cloudforge-*
+              - Sid: ReadAccountInformation
+                Effect: Allow
+                Action:
+                  - iam:ListRoles
+                  - iam:GetPolicy
+                  - iam:GetPolicyVersion
+                Resource: "*"
+      Tags:
+        - Key: Project
+          Value: CloudForge
+        - Key: AutoDestroy
+          Value: "true"
+
+Outputs:
+  GitHubActionsRoleArn:
+    Description: Add this value as the GitHub repository variable AWS_ROLE_ARN
+    Value: !GetAtt GitHubDeployRole.Arn
+  TerraformStateBucketName:
+    Description: Add this value as the GitHub repository variable TF_STATE_BUCKET
+    Value: !Ref TerraformStateBucket
+  AwsRegion:
+    Description: Add this value as the GitHub repository variable AWS_REGION
+    Value: !Ref AWS::Region
+

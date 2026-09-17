@@ -1,0 +1,7 @@
+aws_region          = "us-east-2"
+project_name        = "cloudforge"
+environment         = "demo"
+github_repository   = "YOUR_GITHUB_USERNAME/cloudforge-platform"
+kubernetes_version  = "1.36"
+node_instance_types = ["t3.medium"]
+node_desired_size   = 2

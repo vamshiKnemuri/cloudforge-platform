@@ -1,0 +1,32 @@
+{{- if .Values.prometheusRule.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ include "cloudforge.name" . }}
+  labels:
+    {{- include "cloudforge.labels" . | nindent 4 }}
+spec:
+  groups:
+    - name: cloudforge.rules
+      rules:
+        - alert: CloudForgeUnavailable
+          expr: up{service="cloudforge"} == 0
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: CloudForge metrics endpoint is unavailable
+            runbook_url: https://github.com/OWNER/REPOSITORY/blob/main/runbooks/SERVICE_UNAVAILABLE.md
+        - alert: CloudForgeHighErrorRate
+          expr: >-
+            sum(rate(cloudforge_http_requests_total{status=~"5.."}[5m]))
+            /
+            clamp_min(sum(rate(cloudforge_http_requests_total[5m])), 0.001)
+            > 0.05
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: CloudForge error rate exceeds five percent
+{{- end }}
+

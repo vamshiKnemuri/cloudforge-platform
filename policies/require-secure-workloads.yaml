@@ -1,0 +1,39 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-secure-workloads
+  annotations:
+    policies.kyverno.io/title: Require secure workload settings
+    policies.kyverno.io/category: Pod Security
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: require-non-root
+      match:
+        any:
+          - resources:
+              kinds: ["Pod"]
+              namespaces: ["cloudforge"]
+      validate:
+        message: Workloads must run as a non-root user.
+        pattern:
+          spec:
+            securityContext:
+              runAsNonRoot: true
+    - name: block-privilege-escalation
+      match:
+        any:
+          - resources:
+              kinds: ["Pod"]
+              namespaces: ["cloudforge"]
+      validate:
+        message: Containers must block privilege escalation and drop all capabilities.
+        foreach:
+          - list: request.object.spec.containers
+            pattern:
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop: ["ALL"]
+
