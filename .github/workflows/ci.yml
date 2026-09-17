@@ -44,7 +44,7 @@ jobs:
           push: false
           tags: cloudforge:test
       - name: Scan image
-        uses: aquasecurity/trivy-action@0.33.1
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: cloudforge:test
           format: table
@@ -72,7 +72,7 @@ jobs:
       - name: Lint Helm chart
         run: helm lint platform/chart --set image.repository=example.invalid/cloudforge --set image.tag=test
       - name: Scan infrastructure configuration
-        uses: aquasecurity/trivy-action@0.33.1
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: config
           scan-ref: .
