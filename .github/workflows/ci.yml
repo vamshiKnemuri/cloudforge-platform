@@ -1,0 +1,80 @@
+name: Continuous Integration
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  application:
+    name: Application tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install validation dependency
+        run: python -m pip install --disable-pip-version-check -r requirements-dev.txt
+      - name: Run unit and integration tests
+        run: python -m unittest discover -s app/tests -v
+      - name: Compile Python sources
+        run: python -m compileall -q app
+      - name: Run offline repository validator
+        run: python scripts/validate_project.py
+
+  container:
+    name: Container build and scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: docker/setup-buildx-action@v3
+      - name: Build local image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          push: false
+          tags: cloudforge:test
+      - name: Scan image
+        uses: aquasecurity/trivy-action@0.33.1
+        with:
+          image-ref: cloudforge:test
+          format: table
+          severity: CRITICAL,HIGH
+          exit-code: "1"
+          ignore-unfixed: true
+
+  infrastructure:
+    name: Terraform and Helm validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.14.3"
+      - name: Check Terraform formatting
+        run: terraform fmt -check -recursive infrastructure/terraform
+      - name: Initialize Terraform without a remote backend
+        working-directory: infrastructure/terraform
+        run: terraform init -backend=false
+      - name: Validate Terraform configuration
+        working-directory: infrastructure/terraform
+        run: terraform validate
+      - uses: azure/setup-helm@v4.3.1
+      - name: Lint Helm chart
+        run: helm lint platform/chart --set image.repository=example.invalid/cloudforge --set image.tag=test
+      - name: Scan infrastructure configuration
+        uses: aquasecurity/trivy-action@0.33.1
+        with:
+          scan-type: config
+          scan-ref: .
+          severity: CRITICAL,HIGH
+          exit-code: "1"
