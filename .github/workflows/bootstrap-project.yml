@@ -1,8 +1,6 @@
 name: Bootstrap CloudForge Project
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 permissions:
