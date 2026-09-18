@@ -1,0 +1,4 @@
+# The ephemeral demo is deployed from a GitHub-hosted runner outside the VPC.
+# Access is limited at runtime to that runner's /32; see SECURITY.md.
+# Review or remove this exception by 2026-12-31.
+AVD-AWS-0040
