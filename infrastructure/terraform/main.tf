@@ -24,6 +24,7 @@ module "eks" {
   name                = local.name
   kubernetes_version  = var.kubernetes_version
   private_subnet_ids  = module.network.private_subnet_ids
+  public_access_cidrs = var.cluster_public_access_cidrs
   node_instance_types = var.node_instance_types
   node_desired_size   = var.node_desired_size
 }
@@ -57,4 +58,3 @@ resource "aws_ecr_lifecycle_policy" "application" {
     }]
   })
 }
-
