@@ -20,12 +20,30 @@ resource "aws_cloudwatch_log_group" "cluster" {
   retention_in_days = 7
 }
 
+resource "aws_kms_key" "eks_secrets" {
+  description             = "Envelope encryption for ${var.name} Kubernetes Secrets"
+  enable_key_rotation     = true
+  deletion_window_in_days = 7
+}
+
+resource "aws_kms_alias" "eks_secrets" {
+  name          = "alias/${var.name}-eks-secrets"
+  target_key_id = aws_kms_key.eks_secrets.key_id
+}
+
 resource "aws_eks_cluster" "this" {
   name     = var.name
   role_arn = aws_iam_role.cluster.arn
   version  = var.kubernetes_version
 
   enabled_cluster_log_types = ["api", "audit", "authenticator", "controllerManager", "scheduler"]
+
+  encryption_config {
+    provider {
+      key_arn = aws_kms_key.eks_secrets.arn
+    }
+    resources = ["secrets"]
+  }
 
   access_config {
     authentication_mode                         = "API_AND_CONFIG_MAP"
@@ -36,6 +54,7 @@ resource "aws_eks_cluster" "this" {
     subnet_ids              = var.private_subnet_ids
     endpoint_private_access = true
     endpoint_public_access  = true
+    public_access_cidrs     = var.public_access_cidrs
   }
 
   upgrade_policy {
