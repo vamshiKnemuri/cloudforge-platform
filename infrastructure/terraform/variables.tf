@@ -38,6 +38,21 @@ variable "kubernetes_version" {
   default     = "1.36"
 }
 
+variable "cluster_public_access_cidrs" {
+  description = "CIDR blocks allowed to reach the public EKS API. The deploy workflow supplies its runner IP as a /32."
+  type        = list(string)
+  default     = ["127.0.0.1/32"]
+
+  validation {
+    condition = (
+      length(var.cluster_public_access_cidrs) > 0 &&
+      alltrue([for cidr in var.cluster_public_access_cidrs : can(cidrnetmask(cidr))]) &&
+      !contains(var.cluster_public_access_cidrs, "0.0.0.0/0")
+    )
+    error_message = "cluster_public_access_cidrs must contain valid, restricted CIDR blocks and cannot include 0.0.0.0/0."
+  }
+}
+
 variable "node_instance_types" {
   description = "EC2 instance types used by the managed node group."
   type        = list(string)
