@@ -34,6 +34,33 @@ Resources:
         - Key: AutoDestroy
           Value: "true"
 
+  TerraformStateKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: Customer-managed key for CloudForge Terraform state
+      EnableKeyRotation: true
+      PendingWindowInDays: 7
+      KeyPolicy:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: EnableAccountPermissions
+            Effect: Allow
+            Principal:
+              AWS: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:root
+            Action: kms:*
+            Resource: "*"
+      Tags:
+        - Key: Project
+          Value: CloudForge
+        - Key: AutoDestroy
+          Value: "true"
+
+  TerraformStateKeyAlias:
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: alias/cloudforge-terraform-state
+      TargetKeyId: !Ref TerraformStateKey
+
   TerraformStateBucket:
     Type: AWS::S3::Bucket
     Properties:
@@ -41,7 +68,9 @@ Resources:
       BucketEncryption:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
-              SSEAlgorithm: AES256
+              SSEAlgorithm: aws:kms
+              KMSMasterKeyID: !GetAtt TerraformStateKey.Arn
+            BucketKeyEnabled: true
       VersioningConfiguration:
         Status: Enabled
       PublicAccessBlockConfiguration:
@@ -137,7 +166,9 @@ Outputs:
   TerraformStateBucketName:
     Description: Add this value as the GitHub repository variable TF_STATE_BUCKET
     Value: !Ref TerraformStateBucket
+  TerraformStateKeyArn:
+    Description: Customer-managed KMS key protecting Terraform state
+    Value: !GetAtt TerraformStateKey.Arn
   AwsRegion:
     Description: Add this value as the GitHub repository variable AWS_REGION
     Value: !Ref AWS::Region
-
