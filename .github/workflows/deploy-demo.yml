@@ -41,6 +41,12 @@ jobs:
           role-to-assume: ${{ vars.AWS_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
 
+      - name: Restrict the EKS API to this runner
+        run: |
+          RUNNER_PUBLIC_IP="$(curl --fail --silent --show-error https://checkip.amazonaws.com)"
+          test -n "$RUNNER_PUBLIC_IP"
+          echo "TF_VAR_cluster_public_access_cidrs=[\"${RUNNER_PUBLIC_IP}/32\"]" >> "$GITHUB_ENV"
+
       - uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: "1.14.3"
