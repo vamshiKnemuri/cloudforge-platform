@@ -3,5 +3,6 @@ project_name        = "cloudforge"
 environment         = "demo"
 github_repository   = "YOUR_GITHUB_USERNAME/cloudforge-platform"
 kubernetes_version  = "1.36"
+cluster_public_access_cidrs = ["203.0.113.10/32"]
 node_instance_types = ["t3.medium"]
 node_desired_size   = 2
