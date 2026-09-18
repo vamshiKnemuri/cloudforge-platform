@@ -1,7 +1,7 @@
 resource "aws_iam_role" "cluster" {
-  name               = "${var.name}-eks-cluster"
+  name = "${var.name}-eks-cluster"
   assume_role_policy = jsonencode({
-    Version   = "2012-10-17"
+    Version = "2012-10-17"
     Statement = [{
       Effect    = "Allow"
       Principal = { Service = "eks.amazonaws.com" }
@@ -49,9 +49,9 @@ resource "aws_eks_cluster" "this" {
 }
 
 resource "aws_iam_role" "nodes" {
-  name               = "${var.name}-eks-nodes"
+  name = "${var.name}-eks-nodes"
   assume_role_policy = jsonencode({
-    Version   = "2012-10-17"
+    Version = "2012-10-17"
     Statement = [{
       Effect    = "Allow"
       Principal = { Service = "ec2.amazonaws.com" }
